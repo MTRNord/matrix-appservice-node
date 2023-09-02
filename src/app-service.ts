@@ -8,6 +8,13 @@ import https from "https";
 import { Server, default as http } from "http";
 import { AppserviceHttpError } from "./AppserviceHttpError";
 import { trace, Span } from '@opentelemetry/api';
+import opentracing, { SpanContext } from 'opentracing';
+import { shim } from './opentracing-shim';
+import { SpanContextShim } from "@opentelemetry/shim-opentracing/build/src/shim";
+
+opentracing.initGlobalTracer(shim());
+const tracer = opentracing.globalTracer();
+
 
 const MAX_SIZE_BYTES = 5000000; // 5MB
 
@@ -88,8 +95,17 @@ export class AppService extends EventEmitter {
             limit: this.config.httpMaxSizeBytes || MAX_SIZE_BYTES,
         }));
         const legacyEndpointHandler = (req: Request, res: Response) => {
+            const parentSpan = tracer.extract(
+                opentracing.FORMAT_HTTP_HEADERS,
+                req.headers,
+            ) as SpanContextShim;
             trace.getTracer('matrix-appservice').startActiveSpan('legacyEndpointHandler', {
                 kind: 1, // server
+                links: [
+                    {
+                        context: parentSpan.getSpanContext()
+                    }
+                ]
             }, async (parentSpan: Span) => {
                 res.status(308).location("/_matrix/app/v1" + req.originalUrl).send({ errcode: "M_UNKNOWN", error: "This non-standard endpoint has been removed" })
                 parentSpan.end();
@@ -225,8 +241,17 @@ export class AppService extends EventEmitter {
     }
 
     private async onGetUsers(req: Request, res: Response) {
+        const parentSpan = tracer.extract(
+            opentracing.FORMAT_HTTP_HEADERS,
+            req.headers,
+        ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onGetUsers', {
             kind: 1, // server
+            links: [
+                {
+                    context: parentSpan.getSpanContext()
+                }
+            ]
         }, async (parentSpan: Span) => {
             if (this.isInvalidToken(req, res)) {
                 parentSpan.end();
@@ -262,8 +287,17 @@ export class AppService extends EventEmitter {
     }
 
     private async onGetRoomAlias(req: Request, res: Response) {
+        const parentSpan = tracer.extract(
+            opentracing.FORMAT_HTTP_HEADERS,
+            req.headers,
+        ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onGetRoomAlias', {
             kind: 1, // server
+            links: [
+                {
+                    context: parentSpan.getSpanContext()
+                }
+            ]
         }, async (parentSpan: Span) => {
             if (this.isInvalidToken(req, res)) {
                 parentSpan.end();
@@ -290,8 +324,17 @@ export class AppService extends EventEmitter {
     }
 
     private onTransaction(req: Request, res: Response) {
+        const parentSpan = tracer.extract(
+            opentracing.FORMAT_HTTP_HEADERS,
+            req.headers,
+        ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onTransaction', {
             kind: 1, // server
+            links: [
+                {
+                    context: parentSpan.getSpanContext()
+                }
+            ]
         }, async (parentSpan: Span) => {
             if (this.isInvalidToken(req, res)) {
                 parentSpan.end();
@@ -337,8 +380,17 @@ export class AppService extends EventEmitter {
     }
 
     private onHealthCheck(req: Request, res: Response) {
+        const parentSpan = tracer.extract(
+            opentracing.FORMAT_HTTP_HEADERS,
+            req.headers,
+        ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onHealthCheck', {
             kind: 1, // server
+            links: [
+                {
+                    context: parentSpan.getSpanContext()
+                }
+            ]
         }, async (parentSpan: Span) => {
             res.send('OK');
             parentSpan.end();

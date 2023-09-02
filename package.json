@@ -27,10 +27,12 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@opentelemetry/api": "^1.4.1",
+    "@opentelemetry/shim-opentracing": "^1.15.2",
     "body-parser": "^1.19.0",
     "express": "^4.18.1",
     "js-yaml": "^4.1.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "opentracing": "^0.14.7"
   },
   "devDependencies": {
     "@tsconfig/node18": "^2.0.0",
