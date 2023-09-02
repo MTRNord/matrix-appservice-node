@@ -1,4 +1,4 @@
-import {Application, Request, Response, default as express} from "express";
+import { Application, Request, Response, default as express } from "express";
 import bodyParser from "body-parser";
 import morgan from "morgan";
 import util from "util";
@@ -7,6 +7,7 @@ import fs from "fs";
 import https from "https";
 import { Server, default as http } from "http";
 import { AppserviceHttpError } from "./AppserviceHttpError";
+import { trace, Span } from '@opentelemetry/api';
 
 const MAX_SIZE_BYTES = 5000000; // 5MB
 
@@ -74,7 +75,7 @@ export class AppService extends EventEmitter {
      * incoming HTTP request. Default: 5000000.
      * @throws If a homeserver token is not supplied.
      */
-    constructor (private config: { homeserverToken: string; httpMaxSizeBytes?: number}) {
+    constructor(private config: { homeserverToken: string; httpMaxSizeBytes?: number }) {
         super();
         const app = express();
         app.use(morgan("combined", {
@@ -87,7 +88,13 @@ export class AppService extends EventEmitter {
             limit: this.config.httpMaxSizeBytes || MAX_SIZE_BYTES,
         }));
         const legacyEndpointHandler = (req: Request, res: Response) => {
-            res.status(308).location("/_matrix/app/v1" + req.originalUrl).send({ errcode: "M_UNKNOWN", error: "This non-standard endpoint has been removed" }) };
+            trace.getTracer('matrix-appservice').startActiveSpan('legacyEndpointHandler', {
+                kind: 1, // server
+            }, async (parentSpan: Span) => {
+                res.status(308).location("/_matrix/app/v1" + req.originalUrl).send({ errcode: "M_UNKNOWN", error: "This non-standard endpoint has been removed" })
+                parentSpan.end();
+            });
+        };
         app.get("/_matrix/app/v1/users/:userId", this.onGetUsers.bind(this));
         app.get("/_matrix/app/v1/rooms/:alias", this.onGetRoomAlias.bind(this));
         app.put("/_matrix/app/v1/transactions/:txnId", this.onTransaction.bind(this));
@@ -125,8 +132,8 @@ export class AppService extends EventEmitter {
             }
 
             const options = {
-                key  : fs.readFileSync(tlsKey),
-                cert : fs.readFileSync(tlsCert)
+                key: fs.readFileSync(tlsKey),
+                cert: fs.readFileSync(tlsCert)
             };
             serverApp = https.createServer(options, this.app);
         }
@@ -163,7 +170,7 @@ export class AppService extends EventEmitter {
      * @param {Function} callback The callback to invoke when complete.
      * @return {Promise} A promise to resolve when complete (if callback isn't supplied)
      */
-    public onAliasQuery(alias: string, callback: () => void): PromiseLike<void>|null {
+    public onAliasQuery(alias: string, callback: () => void): PromiseLike<void> | null {
         callback(); // stub impl
         return null;
     }
@@ -174,7 +181,7 @@ export class AppService extends EventEmitter {
      * @param {Function} callback The callback to invoke when complete.
      * @return {Promise} A promise to resolve when complete (if callback isn't supplied)
      */
-    public onUserQuery(userId: string, callback: () => void): PromiseLike<void>|null {
+    public onUserQuery(userId: string, callback: () => void): PromiseLike<void> | null {
         callback(); // stub impl
         return null;
     }
@@ -218,95 +225,123 @@ export class AppService extends EventEmitter {
     }
 
     private async onGetUsers(req: Request, res: Response) {
-        if (this.isInvalidToken(req, res)) {
-            return;
-        }
-        const possiblePromise = this.onUserQuery(req.params.userId, () => {
-            res.send({});
-        });
-        if (!possiblePromise) {
-            return;
-        }
-        try {
-            await possiblePromise;
-            res.send({});
-        } catch (e) {
-            if (e instanceof AppserviceHttpError) {
-                res.status(e.status);
-                res.send({
-                    errcode: e.errcode,
-                    message: e.message,
-                });
-            } else {
-                res.status(500);
-                res.send({
-                    errcode: "M_UNKNOWN",
-                    message: e instanceof Error ? e.message : "",
-                });    
+        trace.getTracer('matrix-appservice').startActiveSpan('onGetUsers', {
+            kind: 1, // server
+        }, async (parentSpan: Span) => {
+            if (this.isInvalidToken(req, res)) {
+                parentSpan.end();
+                return;
             }
-        }
+            const possiblePromise = this.onUserQuery(req.params.userId, () => {
+                res.send({});
+            });
+            if (!possiblePromise) {
+                parentSpan.end();
+                return;
+            }
+            try {
+                await possiblePromise;
+                res.send({});
+            } catch (e) {
+                if (e instanceof AppserviceHttpError) {
+                    res.status(e.status);
+                    res.send({
+                        errcode: e.errcode,
+                        message: e.message,
+                    });
+                } else {
+                    res.status(500);
+                    res.send({
+                        errcode: "M_UNKNOWN",
+                        message: e instanceof Error ? e.message : "",
+                    });
+                }
+            }
+            parentSpan.end();
+        });
     }
 
     private async onGetRoomAlias(req: Request, res: Response) {
-        if (this.isInvalidToken(req, res)) {
-            return;
-        }
-        const possiblePromise = this.onAliasQuery(req.params.alias, function() {
-            res.send({});
-        });
-        if (!possiblePromise) { 
-            return;
-        }
-        try {
-            await possiblePromise;
-            res.send({});
-        } catch (e) {
-            res.send({
-                errcode: "M_UNKNOWN",
-                error: e instanceof Error ? e.message : ""
+        trace.getTracer('matrix-appservice').startActiveSpan('onGetRoomAlias', {
+            kind: 1, // server
+        }, async (parentSpan: Span) => {
+            if (this.isInvalidToken(req, res)) {
+                parentSpan.end();
+                return;
+            }
+            const possiblePromise = this.onAliasQuery(req.params.alias, function () {
+                res.send({});
             });
-        }
+            if (!possiblePromise) {
+                parentSpan.end();
+                return;
+            }
+            try {
+                await possiblePromise;
+                res.send({});
+            } catch (e) {
+                res.send({
+                    errcode: "M_UNKNOWN",
+                    error: e instanceof Error ? e.message : ""
+                });
+            }
+            parentSpan.end();
+        });
     }
 
     private onTransaction(req: Request, res: Response) {
-        if (this.isInvalidToken(req, res)) {
-            return;
-        }
-
-        const txnId = req.params.txnId;
-        if (!txnId) {
-            res.send("Missing transaction ID.");
-            return;
-        }
-        if (!req.body) {
-            res.send("Missing body.");
-            return;
-        }
-
-        const events = req.body.events || [];
-        const ephemeral = req.body["de.sorunome.msc2409.ephemeral"] || [];
-
-        if (this.lastProcessedTxnId === txnId) {
-            res.send({}); // duplicate
-            return;
-        }
-        for (const event of events) {
-            this.emit("event", event);
-            if (event.type) {
-                this.emit("type:" + event.type, event);
+        trace.getTracer('matrix-appservice').startActiveSpan('onTransaction', {
+            kind: 1, // server
+        }, async (parentSpan: Span) => {
+            if (this.isInvalidToken(req, res)) {
+                parentSpan.end();
+                return;
             }
-        }
-        for (const event of ephemeral) {
-            this.emit("ephemeral", event);
-            if (event.type) {
-                this.emit("ephemeral_type:" + event.type, event);
+
+            const txnId = req.params.txnId;
+            if (!txnId) {
+                res.send("Missing transaction ID.");
+                parentSpan.end();
+                return;
             }
-        }
-        this.lastProcessedTxnId = txnId;
-        res.send({});
+            if (!req.body) {
+                res.send("Missing body.");
+                parentSpan.end();
+                return;
+            }
+
+            const events = req.body.events || [];
+            const ephemeral = req.body["de.sorunome.msc2409.ephemeral"] || [];
+
+            if (this.lastProcessedTxnId === txnId) {
+                res.send({}); // duplicate
+                parentSpan.end();
+                return;
+            }
+            for (const event of events) {
+                this.emit("event", event);
+                if (event.type) {
+                    this.emit("type:" + event.type, event);
+                }
+            }
+            for (const event of ephemeral) {
+                this.emit("ephemeral", event);
+                if (event.type) {
+                    this.emit("ephemeral_type:" + event.type, event);
+                }
+            }
+            this.lastProcessedTxnId = txnId;
+            res.send({});
+            parentSpan.end();
+        });
     }
 
     private onHealthCheck(req: Request, res: Response) {
-        res.send('OK');
+        trace.getTracer('matrix-appservice').startActiveSpan('onHealthCheck', {
+            kind: 1, // server
+        }, async (parentSpan: Span) => {
+            res.send('OK');
+            parentSpan.end();
+        });
     }
 }
