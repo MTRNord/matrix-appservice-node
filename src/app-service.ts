@@ -330,7 +330,6 @@ export class AppService extends EventEmitter {
     }
 
     private onTransaction(req: Request, res: Response) {
-        console.log(req.rawHeaders);
         const parentSpan = tracer.extract(
             FORMAT_HTTP_HEADERS,
             req.headers,
