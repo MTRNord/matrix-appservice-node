@@ -98,14 +98,16 @@ export class AppService extends EventEmitter {
             const parentSpan = tracer.extract(
                 FORMAT_HTTP_HEADERS,
                 req.headers,
-            ) as SpanContextShim;
+            ) as SpanContextShim | null;
+            let links = []
+            if (parentSpan) {
+                links.push({
+                    context: parentSpan.getSpanContext()
+                })
+            }
             trace.getTracer('matrix-appservice').startActiveSpan('legacyEndpointHandler', {
                 kind: 1, // server
-                links: [
-                    {
-                        context: parentSpan.getSpanContext()
-                    }
-                ]
+                links: links
             }, async (parentSpan: Span) => {
                 res.status(308).location("/_matrix/app/v1" + req.originalUrl).send({ errcode: "M_UNKNOWN", error: "This non-standard endpoint has been removed" })
                 parentSpan.end();
@@ -244,14 +246,16 @@ export class AppService extends EventEmitter {
         const parentSpan = tracer.extract(
             FORMAT_HTTP_HEADERS,
             req.headers,
-        ) as SpanContextShim;
+        ) as SpanContextShim | null;
+        let links = []
+        if (parentSpan) {
+            links.push({
+                context: parentSpan.getSpanContext()
+            })
+        }
         trace.getTracer('matrix-appservice').startActiveSpan('onGetUsers', {
             kind: 1, // server
-            links: [
-                {
-                    context: parentSpan.getSpanContext()
-                }
-            ]
+            links: links
         }, async (parentSpan: Span) => {
             if (this.isInvalidToken(req, res)) {
                 parentSpan.end();
@@ -290,14 +294,16 @@ export class AppService extends EventEmitter {
         const parentSpan = tracer.extract(
             FORMAT_HTTP_HEADERS,
             req.headers,
-        ) as SpanContextShim;
+        ) as SpanContextShim | null;
+        let links = []
+        if (parentSpan) {
+            links.push({
+                context: parentSpan.getSpanContext()
+            })
+        }
         trace.getTracer('matrix-appservice').startActiveSpan('onGetRoomAlias', {
             kind: 1, // server
-            links: [
-                {
-                    context: parentSpan.getSpanContext()
-                }
-            ]
+            links: links
         }, async (parentSpan: Span) => {
             if (this.isInvalidToken(req, res)) {
                 parentSpan.end();
@@ -327,14 +333,16 @@ export class AppService extends EventEmitter {
         const parentSpan = tracer.extract(
             FORMAT_HTTP_HEADERS,
             req.headers,
-        ) as SpanContextShim;
+        ) as SpanContextShim | null;
+        let links = []
+        if (parentSpan) {
+            links.push({
+                context: parentSpan.getSpanContext()
+            })
+        }
         trace.getTracer('matrix-appservice').startActiveSpan('onTransaction', {
             kind: 1, // server
-            links: [
-                {
-                    context: parentSpan.getSpanContext()
-                }
-            ]
+            links: links
         }, async (parentSpan: Span) => {
             if (this.isInvalidToken(req, res)) {
                 parentSpan.end();
@@ -383,14 +391,16 @@ export class AppService extends EventEmitter {
         const parentSpan = tracer.extract(
             FORMAT_HTTP_HEADERS,
             req.headers,
-        ) as SpanContextShim;
+        ) as SpanContextShim | null;
+        let links = []
+        if (parentSpan) {
+            links.push({
+                context: parentSpan.getSpanContext()
+            })
+        }
         trace.getTracer('matrix-appservice').startActiveSpan('onHealthCheck', {
             kind: 1, // server
-            links: [
-                {
-                    context: parentSpan.getSpanContext()
-                }
-            ]
+            links: links
         }, async (parentSpan: Span) => {
             res.send('OK');
             parentSpan.end();
