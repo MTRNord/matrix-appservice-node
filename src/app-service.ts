@@ -8,12 +8,12 @@ import https from "https";
 import { Server, default as http } from "http";
 import { AppserviceHttpError } from "./AppserviceHttpError";
 import { trace, Span } from '@opentelemetry/api';
-import opentracing, { SpanContext } from 'opentracing';
+import { FORMAT_HTTP_HEADERS, globalTracer, initGlobalTracer } from 'opentracing';
 import { shim } from './opentracing-shim';
 import { SpanContextShim } from "@opentelemetry/shim-opentracing/build/src/shim";
 
-opentracing.initGlobalTracer(shim());
-const tracer = opentracing.globalTracer();
+initGlobalTracer(shim());
+const tracer = globalTracer();
 
 
 const MAX_SIZE_BYTES = 5000000; // 5MB
@@ -96,7 +96,7 @@ export class AppService extends EventEmitter {
         }));
         const legacyEndpointHandler = (req: Request, res: Response) => {
             const parentSpan = tracer.extract(
-                opentracing.FORMAT_HTTP_HEADERS,
+                FORMAT_HTTP_HEADERS,
                 req.headers,
             ) as SpanContextShim;
             trace.getTracer('matrix-appservice').startActiveSpan('legacyEndpointHandler', {
@@ -242,7 +242,7 @@ export class AppService extends EventEmitter {
 
     private async onGetUsers(req: Request, res: Response) {
         const parentSpan = tracer.extract(
-            opentracing.FORMAT_HTTP_HEADERS,
+            FORMAT_HTTP_HEADERS,
             req.headers,
         ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onGetUsers', {
@@ -288,7 +288,7 @@ export class AppService extends EventEmitter {
 
     private async onGetRoomAlias(req: Request, res: Response) {
         const parentSpan = tracer.extract(
-            opentracing.FORMAT_HTTP_HEADERS,
+            FORMAT_HTTP_HEADERS,
             req.headers,
         ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onGetRoomAlias', {
@@ -325,7 +325,7 @@ export class AppService extends EventEmitter {
 
     private onTransaction(req: Request, res: Response) {
         const parentSpan = tracer.extract(
-            opentracing.FORMAT_HTTP_HEADERS,
+            FORMAT_HTTP_HEADERS,
             req.headers,
         ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onTransaction', {
@@ -381,7 +381,7 @@ export class AppService extends EventEmitter {
 
     private onHealthCheck(req: Request, res: Response) {
         const parentSpan = tracer.extract(
-            opentracing.FORMAT_HTTP_HEADERS,
+            FORMAT_HTTP_HEADERS,
             req.headers,
         ) as SpanContextShim;
         trace.getTracer('matrix-appservice').startActiveSpan('onHealthCheck', {
